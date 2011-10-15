@@ -53,12 +53,14 @@ def send_picked_versions(old_logging_shutdown, whiskers_url, buildout_name):
             packages.append(package)
             data = dict(packages=packages, buildoutname=buildout_name)
 
-        print json.dumps(data)
-        res = send_picked_versions_data(whiskers_url, json.dumps(data))
-        if res:
-            print res
+        if whiskers_url:
+            res = send_picked_versions_data(whiskers_url, json.dumps(data))
+            if res:
+                print res
+            else:
+                print "Got error sending the data."
         else:
-            print "Got error sending the data."
+            print json.dumps(data)
 
         old_logging_shutdown()
     return logging_shutdown
@@ -79,12 +81,12 @@ def send_picked_versions_data(whiskers_url, data):
 
 def install(buildout):
 
-    whiskers_url = 'whiskers_url' in buildout['buildout'] and \
-              buildout['buildout']['whiskers_url'].strip() or \
+    whiskers_url = 'whiskers-url' in buildout['buildout'] and \
+              buildout['buildout']['whiskers-url'].strip() or \
               None
     buildout_name = 'buildoutname' in buildout['buildout'] and \
                     buildout['buildout']['buildoutname'].strip() or \
-                    None
+                    'dummy_buildout'
 
     zc.buildout.easy_install.Installer.__picked_versions = {}
     zc.buildout.easy_install._log_requirement = _log_requirement

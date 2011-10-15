@@ -1,24 +1,25 @@
-
-Let's create an egg to use it in our tests::
+Let's create an eggs to use them in our tests::
 
     >>> mkdir('myegg')
     >>> write('myegg', 'setup.py',
     ... '''
     ... from setuptools import setup
-    ... setup(name='myegg', version='1.0',)
+    ... setup(name='myegg', version='1.0',install_requires=['zope.component',])
     ... ''')
     >>> write('myegg', 'README', '')
     >>> print system(buildout+' setup myegg bdist_egg'), # doctest: +ELLIPSIS
     Running setup script 'myegg/setup.py'.
     ...
 
-Now let's create a buildout to install the egg and to use 
-buildout.dumppickedversions::
+Now let's create a buildout to install the egg and to use
+buildout.sendpickedversions::
 
     >>> write('buildout.cfg',
     ... '''
     ... [buildout]
-    ... extensions = buildout.dumppickedversions
+    ... extensions = buildout.sendpickedversions
+    ... buildoutname = testbuildout
+    ... whiskers-url =
     ... parts = foo
     ... find-links = %s
     ... index = http://pypi.python.org/simple
@@ -30,130 +31,17 @@ buildout.dumppickedversions::
 Running the buildout will print information about picked versions::
 
     >>> print system(buildout), # doctest: +ELLIPSIS
-    Getting distribution for 'buildout.dumppickedversions'.
-    ...
-    *************** PICKED VERSIONS ****************
-    [versions]
-    myegg = N.N
-    setuptools = N.N
-    zc.buildout = N.N
-    zc.recipe.egg = N.N
-    <BLANKLINE>
-    *************** /PICKED VERSIONS ***************
-
-To dump picked versions to a file, we just add an ``dump-picked-versions-file`` 
-option and give a file name::
-    
-    >>> write('buildout.cfg',
-    ... '''
-    ... [buildout]
-    ... extensions = buildout.dumppickedversions
-    ... dump-picked-versions-file = versions.cfg
-    ... parts = foo
-    ... find-links = 
-    ...     %s
-    ... index = http://pypi.python.org/simple
-    ... [foo]
-    ... recipe = zc.recipe.egg
-    ... eggs = 
-    ...     myegg 
-    ... ''' % join('myegg', 'dist'))
-    
-    >>> print system(buildout), # doctest: +ELLIPSIS
-    Uninstalling foo.
+    Getting distribution for 'zc.recipe.egg'.
+    Got zc.recipe.egg 1.3.2.
     Installing foo.
-    *********************************************
-    Writing picked versions to versions.cfg
-    *********************************************
-
-And here is the content of the file versions.cfg::
-    
-    >>> cat('versions.cfg')
-    [versions]
-    myegg = N.N
-    setuptools = N.N
-    zc.buildout = N.N
-    zc.recipe.egg = N.N
-    <BLANKLINE>
-
-Next time we run the buildout the file will be overwritten::
-
-    >>> print system(buildout), # doctest: +ELLIPSIS
-    Updating foo.
-    *********************************************
-    Overwriting versions.cfg
-    *********************************************
-    
-When we don't want to overwrite the file we just add an 
-``overwrite-picked-versions-file`` and set it to false::
-
-    >>> write('buildout.cfg',
-    ... '''
-    ... [buildout]
-    ... extensions = buildout.dumppickedversions
-    ... dump-picked-versions-file = versions.cfg
-    ... overwrite-picked-versions-file = false
-    ... parts = foo
-    ... find-links = 
-    ...     %s
-    ... index = http://pypi.python.org/simple
-    ... [foo]
-    ... recipe = zc.recipe.egg
-    ... eggs = 
-    ...     myegg 
-    ... ''' % join('myegg', 'dist'))
-    
-    >>> print system(buildout), # doctest: +ELLIPSIS
-    Updating foo.
-    *********************************************
-    Skipped: File versions.cfg already exists.
-    *********************************************
-    
-If an eggA is installed as requirment for other eggs, you will get a comment
-line just before eggA with the list of eggs that required it.
-
-Let's show an example. We will install zope.component::
-
-    >>> write('buildout.cfg',
-    ... '''
-    ... [buildout]
-    ... extensions = buildout.dumppickedversions
-    ... dump-picked-versions-file = versions.cfg
-    ... parts = foo
-    ... index = http://pypi.python.org/simple
-    ... [foo]
-    ... recipe = zc.recipe.egg
-    ... eggs = zope.component 
-    ... ''')
-    
-    >>> print system(buildout), # doctest: +ELLIPSIS
-    Uninstalling foo.
-    Installing foo.
+    Getting distribution for 'myegg'.
+    Got myegg 1.0.
     Getting distribution for 'zope.component'.
+    Got zope.component 3.11.0.
+    Getting distribution for 'zope.event'.
+    Got zope.event 3.5.1.
+    Getting distribution for 'zope.interface>=3.8.0'.
+    Got zope.interface 3.8.0.
+    {"buildoutname": "testbuildout", "packages": [{"version": "1.0", "name": "myegg"}, {"version": "1.3.2", "name": "zc.recipe.egg"}, {"required_by": ["myegg 1.0"], "version": "3.11.0", "name": "zope.component"}, {"required_by": ["zope.component 3.11.0"], "version": "3.5.1", "name": "zope.event"}, {"version": "3.8.0", "name": "zope.interface"}]}
     ...
-    *********************************************
-    Overwriting versions.cfg
-    *********************************************
-
-and let's see the content of the versions.cfg file::
-
-    >>> cat('versions.cfg')
-    [versions]
-    zc.buildout = N.N
-    zc.recipe.egg = N.N
-    zope.component = N.N
-    <BLANKLINE>
-    #Required by:
-    #zope.event N.N
-    #zope.interface N.N
-    #zope.component N.N
-    setuptools = N.N
-    <BLANKLINE>
-    #Required by:
-    #zope.component N.N
-    zope.event = N.N
-    <BLANKLINE>
-    #Required by:
-    #zope.component N.N
-    zope.interface = N.N
 
