@@ -1,5 +1,8 @@
 import logging
-import json
+try:
+    import json
+except ImportError:
+    import simplejson as json
 import urllib2
 import zc.buildout.easy_install
 import pkg_resources
@@ -33,7 +36,7 @@ def enable_sending_picked_versions(old_get_dist):
     return get_dist
 
 
-def send_picked_versions(old_logging_shutdown, wrw_url, buildout_name):
+def send_picked_versions(old_logging_shutdown, whiskers_url, buildout_name):
 
     packages = []
     def logging_shutdown():
@@ -51,7 +54,7 @@ def send_picked_versions(old_logging_shutdown, wrw_url, buildout_name):
             data = dict(packages=packages, buildoutname=buildout_name)
 
         print json.dumps(data)
-        res = send_picked_versions_data(wrw_url, json.dumps(data))
+        res = send_picked_versions_data(whiskers_url, json.dumps(data))
         if res:
             print res
         else:
@@ -60,19 +63,24 @@ def send_picked_versions(old_logging_shutdown, wrw_url, buildout_name):
         old_logging_shutdown()
     return logging_shutdown
 
-def send_picked_versions_data(wrw_url, data):
+def send_picked_versions_data(whiskers_url, data):
+    req = urllib2.Request(url=whiskers_url, data=data)
     try:
-        req = urllib2.Request(url=wrw_url, data=data)
         h = urllib2.urlopen(req, timeout=5)
-        return h
+    except TypeError, e:
+        # python2.4 doesn't support timeout
+        h = urllib2.urlopen(req)
     except urllib2.URLError, e:
         print str(e)
         return None
+    else:
+        h = None
+    return h.msg or None
 
 def install(buildout):
 
-    wrw_url = 'requirements-mapper-url' in buildout['buildout'] and \
-              buildout['buildout']['requirements-mapper-url'].strip() or \
+    whiskers_url = 'whiskers_url' in buildout['buildout'] and \
+              buildout['buildout']['whiskers_url'].strip() or \
               None
     buildout_name = 'buildoutname' in buildout['buildout'] and \
                     buildout['buildout']['buildoutname'].strip() or \
@@ -83,4 +91,4 @@ def install(buildout):
     zc.buildout.easy_install.Installer._get_dist = enable_sending_picked_versions(
                                   zc.buildout.easy_install.Installer._get_dist)
 
-    logging.shutdown = send_picked_versions(logging.shutdown, wrw_url, buildout_name)
+    logging.shutdown = send_picked_versions(logging.shutdown, whiskers_url, buildout_name)

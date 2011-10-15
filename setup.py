@@ -6,6 +6,11 @@ version = "0.1"
 
 entry_point = 'buildout.sendpickedversions:install'
 entry_points = {"zc.buildout.extension": ["default = %s" % entry_point]}
+requires=['setuptools','zc.buildout']
+try:
+    import json
+except:
+    requires.append('simplejson')
 
 tests_require=['zc.buildout', 'zope.testing', 'zc.recipe.egg']
 
@@ -29,9 +34,7 @@ setup(name='buildout.sendpickedversions',
       namespace_packages=['buildout'],
       include_package_data=True,
       zip_safe=False,
-      install_requires=['setuptools',
-                        'zc.buildout'
-                        ],
+      install_requires=requires,
       tests_require=tests_require,
       extras_require=dict(tests=tests_require),
       test_suite = 'buildout.sendpickedversions.tests.test_suite',
