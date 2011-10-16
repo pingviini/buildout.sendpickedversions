@@ -69,15 +69,13 @@ def send_picked_versions(old_logging_shutdown, whiskers_url, buildout_name):
 def send_picked_versions_data(whiskers_url, data):
     req = urllib2.Request(url=whiskers_url, data=urllib.urlencode({'data':data}))
     try:
-        h = urllib2.urlopen(req, timeout=5)
+        h = urllib2.urlopen(req, timeout=20)
     except TypeError, e:
         # python2.4 doesn't support timeout
         h = urllib2.urlopen(req)
     except urllib2.URLError, e:
         print str(e)
         return None
-    else:
-        h = None
     return h.msg or None
 
 def install(buildout):
