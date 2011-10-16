@@ -4,6 +4,7 @@ try:
 except ImportError:
     import simplejson as json
 import urllib2
+import urllib
 import zc.buildout.easy_install
 import pkg_resources
 
@@ -66,7 +67,7 @@ def send_picked_versions(old_logging_shutdown, whiskers_url, buildout_name):
     return logging_shutdown
 
 def send_picked_versions_data(whiskers_url, data):
-    req = urllib2.Request(url=whiskers_url, data=data)
+    req = urllib2.Request(url=whiskers_url, data=urllib.urlencode({'data':data}))
     try:
         h = urllib2.urlopen(req, timeout=5)
     except TypeError, e:
