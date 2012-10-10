@@ -1,29 +1,30 @@
 import logging
-try:
-    import json
-except ImportError:
-    import simplejson as json
 import urllib2
 import urllib
 import zc.buildout.easy_install
 import pkg_resources
+try:
+    import json
+except ImportError:
+    import simplejson as json
 
 logger = zc.buildout.easy_install.logger
 
 required_by = {}
 
 def _log_requirement(ws, req):
-    ws = list(ws)
-    ws.sort()
-    for dist in ws:
-        if req in dist.requires():
-            req_ = str(req)
-            dist_ = str(dist)
-            if req_ in required_by and dist_ not in required_by[req_]:
-                required_by[req_].append(dist_)
-            else:
-                required_by[req_] = [dist_]
-            logger.debug("  required by %s." % dist)
+    if not logger.isEnabledFor(logging.DEBUG):
+        ws = list(ws)
+        ws.sort()
+        for dist in ws:
+            if req in dist.requires():
+                req_ = str(req)
+                dist_ = str(dist)
+                if req_ in required_by and dist_ not in required_by[req_]:
+                    required_by[req_].append(dist_)
+                else:
+                    required_by[req_] = [dist_]
+                logger.debug("  required by %s." % dist)
 
 
 def enable_sending_picked_versions(old_get_dist):
