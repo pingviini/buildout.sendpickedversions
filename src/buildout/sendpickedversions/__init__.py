@@ -8,9 +8,10 @@ try:
 except ImportError:
     import simplejson as json
 
-logger = zc.buildout.easy_install.logger
 
+logger = zc.buildout.easy_install.logger
 required_by = {}
+
 
 def _log_requirement(ws, req):
     if not logger.isEnabledFor(logging.DEBUG):

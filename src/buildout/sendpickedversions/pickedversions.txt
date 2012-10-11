@@ -23,25 +23,22 @@ buildout.sendpickedversions::
     ... parts = foo
     ... find-links = %s
     ... index = http://pypi.python.org/simple
+    ... versions = versions
     ... [foo]
     ... recipe = zc.recipe.egg
     ... eggs = myegg
+    ... [versions]
+    ... zope.component = 4.0.0
+    ... zc.recipe.egg = 1.3.2
+    ... distribute = 0.6.28
+    ... zc.buildout = 1.6.3
+    ... zope.event = 4.0.0
+    ... zope.interface = 4.0.1
     ... ''' % join('myegg', 'dist'))
 
 Running the buildout will print information about picked versions::
 
     >>> print system(buildout), # doctest: +ELLIPSIS
-    Getting distribution for 'zc.recipe.egg'.
-    Got zc.recipe.egg 1.3.2.
-    Installing foo.
-    Getting distribution for 'myegg'.
-    Got myegg 1.0.
-    Getting distribution for 'zope.component'.
-    Got zope.component 3.11.0.
-    Getting distribution for 'zope.event'.
-    Got zope.event 3.5.1.
-    Getting distribution for 'zope.interface>=3.8.0'.
-    Got zope.interface 3.8.0.
-    {"buildoutname": "testbuildout", "packages": [{"version": "1.0", "name": "myegg"}, {"version": "1.3.2", "name": "zc.recipe.egg"}, {"required_by": ["myegg 1.0"], "version": "3.11.0", "name": "zope.component"}, {"required_by": ["zope.component 3.11.0"], "version": "3.5.1", "name": "zope.event"}, {"version": "3.8.0", "name": "zope.interface"}]}
+    Getting distribution for 'buildout.sendpickedversions'.
     ...
-
+    {"buildoutname": "testbuildout", "packages": [{"version": "0.6.28", "name": "distribute"}, {"version": "1.0", "name": "myegg"}, {"version": "1.6.3", "name": "zc.buildout"}, {"version": "1.3.2", "name": "zc.recipe.egg"}, {"version": "4.0.0", "name": "zope.component"}, {"version": "4.0.0", "name": "zope.event"}, {"version": "4.0.1", "name": "zope.interface"}]}
