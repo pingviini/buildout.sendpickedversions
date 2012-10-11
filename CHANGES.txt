@@ -1,6 +1,11 @@
 Changelog
 =========
 
+0.3 (2012-10-11)
+----------------
+
+- Performance optimizations (ported from zc.buildout).
+
 0.2 (2011-10-16)
 ----------------
 
