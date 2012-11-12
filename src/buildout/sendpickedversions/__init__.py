@@ -3,6 +3,7 @@ import urllib2
 import urllib
 import zc.buildout.easy_install
 import pkg_resources
+from pprint import pprint
 try:
     import json
 except ImportError:
@@ -10,22 +11,41 @@ except ImportError:
 
 
 logger = zc.buildout.easy_install.logger
-required_by = {}
+packages = []
+processed = []
 
 
 def _log_requirement(ws, req):
-    if not logger.isEnabledFor(logging.DEBUG):
-        ws = list(ws)
-        ws.sort()
-        for dist in ws:
-            if req in dist.requires():
-                req_ = str(req)
-                dist_ = str(dist)
-                if req_ in required_by and dist_ not in required_by[req_]:
-                    required_by[req_].append(dist_)
-                else:
-                    required_by[req_] = [dist_]
-                logger.debug("  required by %s." % dist)
+    # if not logger.isEnabledFor(logging.DEBUG):
+    ws = list(ws)
+    ws.sort()
+    for dist in ws:
+        if dist.project_name not in processed:
+            parse_specs(dist)
+
+
+def parse_specs(dist):
+    """Parse specs of package requirements and store them to global list"""
+
+    requirements = []
+
+    for requirement in dist.requires():
+        req = {}
+
+        if requirement.specs:
+            info = requirement.specs[0]
+            req = {'name': requirement.project_name,
+                   'equation': info[0],
+                   'version': info[1]}
+        else:
+            req = {'name': requirement.project_name}
+
+        requirements.append(req)
+
+    processed.append(dist.project_name)
+    packages.append({'name': dist.project_name,
+                     'requirements': requirements,
+                     'version': getattr(dist, 'version', None)})
 
 
 def enable_sending_picked_versions(old_get_dist):
@@ -39,37 +59,35 @@ def enable_sending_picked_versions(old_get_dist):
     return get_dist
 
 
-def send_picked_versions(old_logging_shutdown, whiskers_url, buildout_name):
+def send_picked_versions(old_logging_shutdown, **kw):
 
-    packages = []
     def logging_shutdown():
 
-        packages_dict = sorted(zc.buildout.easy_install.Installer.__picked_versions.items() +\
-                      zc.buildout.easy_install.Installer._versions.items())
-        for d, v in packages_dict:
-            package = dict()
-            if d in required_by:
-                package['required_by'] = required_by[d]
-            package['name'] = d
-            package['version'] = v
+        data = {'packages': {}}
 
-            packages.append(package)
-            data = dict(packages=packages, buildoutname=buildout_name)
+        for package in packages:
+            data['packages'][package['name']] = {'requirements': package['requirements'],
+                                     'version': package['version']}
+        buildout_name = getattr(kw, 'buildout_name', None) or\
+                kw['directory'].rsplit('/',1)[-1]
+        data.update({'buildoutname': buildout_name})
 
-        if whiskers_url:
-            res = send_picked_versions_data(whiskers_url, json.dumps(data))
+        if getattr(kw, 'whiskers_url', None):
+            res = send_picked_versions_data(kw['whiskers_url'], json.dumps(data))
             if res:
                 print res
             else:
-                print "Got error sending the data."
+                print "Got error sending the data to %s" % kw['whiskers_url']
         else:
-            print json.dumps(data)
+            pprint(data)
 
         old_logging_shutdown()
     return logging_shutdown
 
+
 def send_picked_versions_data(whiskers_url, data):
-    req = urllib2.Request(url=whiskers_url, data=urllib.urlencode({'data':data}))
+    req = urllib2.Request(url=whiskers_url,
+                          data=urllib.urlencode({'data': data}))
     try:
         h = urllib2.urlopen(req, timeout=20)
     except TypeError, e:
@@ -80,18 +98,14 @@ def send_picked_versions_data(whiskers_url, data):
         return None
     return h.msg or None
 
+
 def install(buildout):
 
-    whiskers_url = 'whiskers-url' in buildout['buildout'] and \
-              buildout['buildout']['whiskers-url'].strip() or \
-              None
-    buildout_name = 'buildoutname' in buildout['buildout'] and \
-                    buildout['buildout']['buildoutname'].strip() or \
-                    'dummy_buildout'
+    kw = buildout['buildout']
 
     zc.buildout.easy_install.Installer.__picked_versions = {}
     zc.buildout.easy_install._log_requirement = _log_requirement
     zc.buildout.easy_install.Installer._get_dist = enable_sending_picked_versions(
                                   zc.buildout.easy_install.Installer._get_dist)
 
-    logging.shutdown = send_picked_versions(logging.shutdown, whiskers_url, buildout_name)
+    logging.shutdown = send_picked_versions(logging.shutdown, **kw)
