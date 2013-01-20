@@ -3,6 +3,8 @@ import urllib2
 import urllib
 import zc.buildout.easy_install
 import pkg_resources
+import socket
+
 from pprint import pprint
 try:
     import json
@@ -13,6 +15,7 @@ except ImportError:
 logger = zc.buildout.easy_install.logger
 packages = []
 processed = []
+versionmap = {}
 
 
 def _log_requirement(ws, req):
@@ -47,13 +50,26 @@ def parse_specs(dist):
                      'requirements': requirements,
                      'version': getattr(dist, 'version', None)})
 
+    if getattr(dist, 'version', None):
+        version = getattr(dist, 'version')
+        if dist.project_name in versionmap and\
+                version != versionmap[dist.project_name]:
+            # We have some kind of conflict here.
+            logging.error("Conflict with %s (%s) - tried to replace with "
+                          "version %s" % (dist.project_name,
+                                          versionmap[dist.project_name],
+                                          version))
+        else:
+            versionmap[dist.project_name] = getattr(dist, 'version')
+
 
 def enable_sending_picked_versions(old_get_dist):
     def get_dist(self, requirement, ws, always_unzip):
         dists = old_get_dist(self, requirement, ws, always_unzip)
         for dist in dists:
-            if not (dist.precedence == pkg_resources.DEVELOP_DIST or \
-                    (len(requirement.specs) == 1 and requirement.specs[0][0] == '==')):
+            if not (dist.precedence == pkg_resources.DEVELOP_DIST or
+                    (len(requirement.specs) == 1 and
+                     requirement.specs[0][0] == '==')):
                 self.__picked_versions[dist.project_name] = dist.version
         return dists
     return get_dist
@@ -66,18 +82,20 @@ def send_picked_versions(old_logging_shutdown, **kw):
         data = {'packages': {}}
 
         for package in packages:
-            data['packages'][package['name']] = {'requirements': package['requirements'],
-                                     'version': package['version']}
-        buildout_name = getattr(kw, 'buildout_name', None) or\
-                kw['directory'].rsplit('/',1)[-1]
-        data.update({'buildoutname': buildout_name})
+            data['packages'][package['name']] = {
+                'requirements': package['requirements'],
+                'version': package['version']}
+        data.update(kw)
+        data['versionmap'] = versionmap
+        data.update({'hostname': socket.gethostname()})
 
-        if getattr(kw, 'whiskers_url', None):
-            res = send_picked_versions_data(kw['whiskers_url'], json.dumps(data))
+        if kw.get('whiskers-url', None):
+            res = send_picked_versions_data(kw['whiskers-url'],
+                                            json.dumps(data))
             if res:
                 print res
             else:
-                print "Got error sending the data to %s" % kw['whiskers_url']
+                print "Got error sending the data to %s" % kw['whiskers-url']
         else:
             pprint(data)
 
@@ -105,7 +123,8 @@ def install(buildout):
 
     zc.buildout.easy_install.Installer.__picked_versions = {}
     zc.buildout.easy_install._log_requirement = _log_requirement
-    zc.buildout.easy_install.Installer._get_dist = enable_sending_picked_versions(
-                                  zc.buildout.easy_install.Installer._get_dist)
+    zc.buildout.easy_install.Installer._get_dist =\
+        enable_sending_picked_versions(
+            zc.buildout.easy_install.Installer._get_dist)
 
     logging.shutdown = send_picked_versions(logging.shutdown, **kw)
