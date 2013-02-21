@@ -11,7 +11,7 @@ version = "1.0a1"
 
 entry_point = 'buildout.sendpickedversions:install'
 entry_points = {"zc.buildout.extension": ["default = %s" % entry_point]}
-requires = ['setuptools', 'zc.buildout']
+requires = ['setuptools', 'zc.buildout<2.0.0']
 
 if sys.version[:3] < '2.6':
     requires.append('simplejson')
