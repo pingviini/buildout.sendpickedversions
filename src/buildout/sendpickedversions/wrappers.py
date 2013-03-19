@@ -1,9 +1,8 @@
 class DistributionWrapper(object):
     """Wrapper class for distribution specs."""
 
-    def __init__(self, dist, versions):
+    def __init__(self, dist):
         self.dist = dist
-        self.versions = versions
 
     @property
     def name(self):
