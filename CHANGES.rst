@@ -1,8 +1,8 @@
 Changelog
 =========
 
-1.0a1 (unreleased)
-------------------
+1.0-alpha.1 (2013-03-20)
+------------------------
 
 - Returns a lots of new information about buildout including whole buildout
   section (with defaults and computed values as well).

@@ -7,7 +7,7 @@ here = os.path.abspath(os.path.dirname(__file__))
 README = open(os.path.join(here, 'README.rst')).read()
 CHANGES = open(os.path.join(here, 'CHANGES.rst')).read()
 
-version = "1.0a1"
+version = "1.0-alpha.1"
 
 entry_point = 'buildout.sendpickedversions:install'
 entry_points = {"zc.buildout.extension": ["default = %s" % entry_point]}
