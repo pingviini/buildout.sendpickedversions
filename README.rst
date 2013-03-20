@@ -1,16 +1,13 @@
 buildout.sendpickedversions
 ===========================
 
-This package is based on buildout.dumppickedversions_ and its purpose is
-to gather the package name and version information from buildout. The main
-difference with buildout.dumppickedversions_ is that instead of displaying
-picked versions, or dumping everything to a file, we'll send package information
-to a predefined URL.
+This package is heavily inspired by buildout.dumppickedversions_ and its purpose
+is to gather the buildout information and send it as json data to a specified
+remote server.
 
-Original use case is that there is Whiskers_ server on the other end which
-stores the data. There's nothing special about the data, so other end can just
-as well be anything that can handle json.
-
+Remote server can be anything that can handle json data, but there is already
+working server for that - Whiskers_. Whiskers is developed hand in hand
+with buildout.sendpickedversions to store and display the data.
 
 Configuration
 -------------
@@ -21,14 +18,19 @@ configured:
 
 buildoutname
     This is the name of the buildout. Whiskers_ uses this information to create
-    new buildout object with the package data. If name is not set we use default
-    'dummy_buildout' as a name.
+    new buildout object with the package data. If buildout configuration doesn't
+    contain `buildoutname` the script picks the folders name where buildout is
+    located.
 
-whiskers-url
-    This is the url to whiskers server. As stated above, you can use here
-    anything that can just eat the json-data we're sending. If you leave this
-    empty or don't set at all buildout.sendpickedversions just displays the data
-    dict.
+send-data-url
+    This is the url where data is sent after buildout has been run. If you
+    leave this empty or don't set at all buildout.sendpickedversions just
+    displays the data dict. In earlier versions of buildout.sendpickedversions
+    this setting was called `whiskers-url` - this works until next major
+    version (2.x).
+
+To get most out of buildout.sendpickedversions above configuration should be in
+buildouts global configuration at $HOME/.buildout/default.cfg.
 
 Example
 -------
@@ -38,7 +40,7 @@ Here's small example configuration. ::
     [buildout]
     extensions = buildout.sendpickedversions
     buildoutname = test
-    whiskers-url = http://localhost:6543/buildouts/add
+    send-data-url = http://localhost:6543
 
     parts = nose
 
@@ -48,8 +50,9 @@ Here's small example configuration. ::
 
 Above example configuration assumes you have Whiskers_ server running locally on
 port 6543. If you run buildout it will install nose normally to your buildout
-environment and after everything is ready it will try to send following data in
-json-format to localhost:6543/buildouts/add URL: ::
+environment. After buildout has set up the environment 
+buildout.sendpickedversions will try to send following json formatted data to
+the url specified in configuration: ::
 
     {"buildoutname": "test",
      "packages": [

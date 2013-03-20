@@ -6,6 +6,7 @@ import zc.buildout.easy_install
 import pkg_resources
 import socket
 
+from zc.buildout.buildout import MissingOption
 from buildout.sendpickedversions.wrappers import DistributionWrapper
 # from pprint import pprint
 try:
@@ -45,10 +46,45 @@ class BuildoutInfo(object):
         self.pinned_versions = dict(buildout.get('versions', None))
         self.started = datetime.datetime.now().isoformat()
 
-    def pick_package_info(self, ws, req):
+    def enable_sending_picked_versions(self, original_get_dist):
+        """
+        Enables our custom code to run before zc.buildouts get_dist
+        method is being called.
+        """
+        # Check if we have zc.buildout < 2.x
+        if int(buildout_version[0]) < 2:
+            def get_dist_1(self, requirement, ws, always_unzip):
+                dists = original_get_dist(self, requirement, ws, always_unzip)
+                self.pick_package_info(dists, ws)
+                return dists
+            get_dist = get_dist_1
+        else:
+            def get_dist_2(self, requirement, ws):
+                dists = original_get_dist(self, requirement, ws)
+                self.pick_package_info(dists, ws)
+                return dists
+            get_dist = get_dist_2
+
+        return get_dist
+
+    def pick_package_info(self, dists, ws):
         """Parses through package requirements and picks data."""
-        ws = list(ws)
-        ws.sort()
+        dists = list(dists)
+        dists.sort()
+
+        # Pick data from packages fetched via buildout.
+        for dist in dists:
+            if dist.project_name not in self.processed:
+                package = DistributionWrapper(dist)
+                # Add package to list of processed packages
+                self.processed.update([package.name])
+                # Add data to packages list
+                self.packages.append(package.get_dict())
+                self.update_versionmap(package)
+
+        # Loop through ws to pick packages which have satisfied
+        # requirements and aren't in the dists list.
+        # (this happens if buildout is ran with -N switch)
         for dist in ws:
             if dist.project_name not in self.processed:
                 package = DistributionWrapper(dist)
@@ -63,30 +99,10 @@ class BuildoutInfo(object):
         if package.version:
             self.versionmap[package.name] = package.version
 
-    def enable_sending_picked_versions(self, original_get_dist):
-        """
-        Enables our custom code to run before zc.buildouts get_dist
-        method is being called.
-        """
-        # Check if we have zc.buildout < 2.x
-        if int(buildout_version[0]) < 2:
-            def get_dist(self, requirement, ws, always_unzip):
-                self.pick_package_info(ws, requirement)
-                dists = original_get_dist(self, requirement, ws, always_unzip)
-                return dists
-        else:
-            def get_dist(self, requirement, ws):
-                self.pick_package_info(ws, requirement)
-                dists = original_get_dist(self, requirement, ws)
-                return dists
-
-        return get_dist
-
     def send_picked_versions(self, old_logging_shutdown):
 
         def logging_shutdown():
             data = {'packages': {}}
-
             for package in self.packages:
                 data['packages'][package['name']] = {
                     'requirements': package['requirements'],
@@ -114,12 +130,16 @@ class BuildoutInfo(object):
         """Return URL where data should be sent."""
         url = None
         try:
-            url = self.buildout['picked-data-url']
-        except KeyError:
+            url = self.buildout['send-data-url']
+        except MissingOption:
             # Maybe we have old configuration which uses whiskers-url
-            url = self.buildout['whiskers-url']
+            try:
+                url = self.buildout['whiskers-url']
+            except MissingOption:
+                logging.info("No send-data-url specified.")
+                pass
 
-        if url[-1] != '/':
+        if url and url[-1] != '/':
             url += '/'
 
         return url
